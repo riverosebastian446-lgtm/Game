@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JDM Legends · Carreras de lujo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+        body {
+            font-family: 'Segoe UI', 'Arial', sans-serif;
+            background: #0a0f1e;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #game-container {
+            width: 960px;
+            height: 640px;
+            background: #111624;
+            border-radius: 24px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.8), 0 0 0 2px #2a3a5a inset;
+            position: relative;
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            border-radius: 24px;
+        }
+        /* UI overlay */
+        .ui-panel {
+            position: absolute;
+            background: rgba(8, 15, 30, 0.92);
+            backdrop-filter: blur(8px);
+            border: 1px solid #4e6b9b;
+            border-radius: 20px;
+            padding: 24px 28px;
+            color: #e3eaff;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+            transition: opacity 0.25s;
+            pointer-events: none;
+            opacity: 0;
+        }
+        .ui-panel.active {
+            pointer-events: auto;
+            opacity: 1;
+        }
+        .menu-title {
+            font-size: 38px;
+            font-weight: 800;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            background: linear-gradient(135deg, #ffd966, #ffaa33);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 16px;
+            text-align: center;
+            text-shadow: 0 0 20px rgba(255, 200, 50, 0.3);
+        }
+        .subtitle {
+            text-align: center;
+            margin-bottom: 24px;
+            color: #a0b5d9;
+            font-weight: 400;
+            letter-spacing: 1px;
+        }
+        .btn {
+            background: linear-gradient(145deg, #1e2b44, #0f172a);
+            border: 1.5px solid #4e6b9b;
+            color: #d5e2ff;
+            padding: 12px 22px;
+            border-radius: 60px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+            letter-spacing: 0.8px;
+            box-shadow: 0 6px 0 #0a101f, 0 8px 18px rgba(0,0,0,0.5);
+            width: 100%;
+            text-align: center;
+        }
+        .btn:hover {
+            background: linear-gradient(145deg, #2b3e62, #172136);
+            border-color: #7a9bd6;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 0 #0a101f, 0 12px 24px rgba(0,0,0,0.6);
+        }
+        .btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 #0a101f;
+        }
+        .btn.small {
+            font-size: 15px;
+            padding: 8px 16px;
+            width: auto;
+            display: inline-block;
+        }
+        .btn-row {
+            display: flex;
+            gap: 12px;
+            margin-top: 12px;
+            justify-content: center;
+        }
+        .stat {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #2e3f5e;
+            font-size: 17px;
+        }
+        .stat span:last-child {
+            font-weight: 700;
+            color: #ffd966;
+        }
+        .car-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 14px;
+            margin: 16px 0;
+        }
+        .car-card {
+            background: #162035;
+            border: 1px solid #364f79;
+            border-radius: 14px;
+            padding: 14px 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.1s;
+        }
+        .car-card.selected {
+            border: 2px solid #ffc107;
+            background: #1f2e4a;
+            box-shadow: 0 0 16px rgba(255, 200, 50, 0.4);
+        }
+        .car-card h4 {
+            font-size: 16px;
+            margin-bottom: 4px;
+            color: #fff;
+        }
+        .car-card .price {
+            font-size: 14px;
+            color: #ffd966;
+            font-weight: 700;
+        }
+        .car-card .owned {
+            font-size: 12px;
+            color: #7ae07a;
+        }
+        .settings-group {
+            margin: 16px 0;
+            background: #101b2e;
+            border-radius: 14px;
+            padding: 16px;
+        }
+        .settings-group label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        input[type="range"] {
+            width: 180px;
+            accent-color: #ffc107;
+        }
+        .key-bind {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        .key-badge {
+            background: #0d1424;
+            padding: 4px 12px;
+            border-radius: 30px;
+            border: 1px solid #4e6b9b;
+            font-weight: 600;
+            color: #ffd966;
+        }
+        .money-tag {
+            background: #1e2b3f;
+            border-radius: 40px;
+            padding: 6px 18px;
+            font-weight: 700;
+            color: #ffd966;
+            border: 1px solid #ffc107;
+            display: inline-block;
+            margin-bottom: 8px;
+        }
+        .online-badge {
+            background: #2b6f4b;
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #b3ffcf;
+        }
+        /* HUD in-game */
+        #hud {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            right: 16px;
+            display: flex;
+            justify-content: space-between;
+            color: white;
+            text-shadow: 0 2px 6px black;
+            font-weight: 700;
+            font-size: 18px;
+            pointer-events: none;
+            z-index: 10;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        #hud.active {
+            opacity: 1;
+        }
+        .hud-box {
+            background: rgba(0,0,0,0.55);
+            backdrop-filter: blur(4px);
+            padding: 10px 20px;
+            border-radius: 40px;
+            border: 1px solid rgba(255,255,255,0.2);
+            display: flex;
+            gap: 24px;
+        }
+        #finish-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(8, 15, 30, 0.95);
+            padding: 30px 50px;
+            border-radius: 30px;
+            border: 2px solid #ffc107;
+            color: white;
+            font-size: 32px;
+            font-weight: 800;
+            text-align: center;
+            z-index: 30;
+            display: none;
+            box-shadow: 0 0 50px rgba(255,200,0,0.3);
+        }
+        .flex-center {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        .back-btn {
+            background: #1e2b44;
+            border: 1px solid #5a7bb0;
+            color: #ccdaff;
+            padding: 6px 18px;
+            border-radius: 40px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 12px;
+        }
+        .back-btn:hover {
+            background: #2b3e62;
+        }
+    </style>
+</head>
+<body>
+<div id="game-container">
+    <canvas id="gameCanvas" width="960" height="640"></canvas>
+
+    <!-- HUD dentro del juego -->
+    <div id="hud">
+        <div class="hud-box">
+            <span>💰 <span id="hud-money">0</span></span>
+            <span>⏱️ <span id="hud-time">0.00</span>s</span>
+        </div>
+        <div class="hud-box">
+            <span>🏁 <span id="hud-speed">0</span> km/h</span>
+        </div>
+    </div>
+
+    <!-- Mensaje fin de carrera -->
+    <div id="finish-message"></div>
+
+    <!-- MENU PRINCIPAL -->
+    <div id="main-menu" class="ui-panel active" style="top: 50%; left: 50%; transform: translate(-50%, -50%); width: 500px;">
+        <div class="menu-title">JDM LEGENDS</div>
+        <div class="subtitle">Carreras de lujo japonesas</div>
+        <div class="money-tag">💰 Dinero: $<span id="menu-money">0</span></div>
+        <div class="flex-center" style="gap: 14px; margin-top: 18px;">
+            <button class="btn" id="btn-quick-race">🏁 Carrera rápida (curvas)</button>
+            <button class="btn" id="btn-online-race">🌐 Carrera online (simulada)</button>
+            <button class="btn" id="btn-garage">🔧 Garaje / Tienda</button>
+            <button class="btn" id="btn-settings">⚙️ Configuración</button>
+        </div>
+        <div style="margin-top: 22px; font-size: 13px; color: #7f93b5; text-align: center;">
+            Carros japoneses de lujo · Gana dinero y compra mejores máquinas
+        </div>
+    </div>
+
+    <!-- GARAJE / TIENDA -->
+    <div id="garage-menu" class="ui-panel" style="top: 50%; left: 50%; transform: translate(-50%, -50%); width: 620px; max-height: 580px; overflow-y: auto;">
+        <div class="menu-title" style="font-size: 30px;">🔧 GARAJE</div>
+        <div class="money-tag">💰 $<span id="garage-money">0</span></div>
+        <div class="car-grid" id="car-grid"></div>
+        <div class="flex-center" style="gap: 8px;">
+            <button class="btn" id="btn-buy-car">Comprar seleccionado</button>
+            <button class="back-btn" id="btn-garage-back">← Volver al menú</button>
+        </div>
+    </div>
+
+    <!-- CONFIGURACIÓN -->
+    <div id="settings-menu" class="ui-panel" style="top: 50%; left: 50%; transform: translate(-50%, -50%); width: 480px;">
+        <div class="menu-title" style="font-size: 30px;">⚙️ CONFIGURACIÓN</div>
+        <div class="settings-group">
+            <label>Calidad de gráficos
+                <input type="range" id="graphics-quality" min="0" max="2" value="2" step="1">
+            </label>
+            <div style="font-size: 13px; color: #9bb1d1; text-align: right;" id="graphics-label">Alta</div>
+        </div>
+        <div class="settings-group">
+            <div style="font-weight: 700; margin-bottom: 10px;">Controles</div>
+            <div class="key-bind"><span>Acelerar</span><span class="key-badge">↑ / W</span></div>
+            <div class="key-bind"><span>Frenar / Reversa</span><span class="key-badge">↓ / S</span></div>
+            <div class="key-bind"><span>Girar izquierda</span><span class="key-badge">← / A</span></div>
+            <div class="key-bind"><span>Girar derecha</span><span class="key-badge">→ / D</span></div>
+            <div class="key-bind"><span>Reiniciar carrera</span><span class="key-badge">R</span></div>
+            <div class="key-bind"><span>Salir al menú</span><span class="key-badge">ESC</span></div>
+        </div>
+        <button class="btn" id="btn-settings-back">← Volver</button>
+    </div>
+</div>
+
+<script>
+    (function() {
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const hud = document.getElementById('hud');
+        const finishMsg = document.getElementById('finish-message');
+
+        // ---------- ESTADO GLOBAL ----------
+        let money = 5000;
+        const cars = [
+            { id: 'kei', name: 'Daihatsu Copen', price: 0, speed: 170, accel: 0.30, handling: 0.9, color: '#e63946', owned: true },
+            { id: 'gt86', name: 'Toyota GT86', price: 12000, speed: 220, accel: 0.38, handling: 0.95, color: '#f4a261', owned: false },
+            { id: 'supra', name: 'Toyota Supra', price: 35000, speed: 280, accel: 0.48, handling: 0.88, color: '#2a9d8f', owned: false },
+            { id: 'gtr', name: 'Nissan GT-R', price: 60000, speed: 320, accel: 0.55, handling: 0.92, color: '#264653', owned: false },
+            { id: 'nsx', name: 'Honda NSX', price: 85000, speed: 340, accel: 0.58, handling: 0.96, color: '#e76f51', owned: false },
+            { id: 'lc500', name: 'Lexus LC500', price: 110000, speed: 360, accel: 0.60, handling: 0.90, color: '#1d3557', owned: false }
+        ];
+        let selectedCarId = 'kei';
+
+        // Configuración
+        let graphicsQuality = 2; // 0 baja, 1 media, 2 alta
+
+        // Estado del juego
+        let gameState = 'menu'; // menu, racing
+        let raceMode = 'quick'; // quick, online
+        let currentTrack = 'circuit'; // circuit (curvas) o straight (recto)
+
+        // Controles
+        const keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false, w: false, s: false, a: false, d: false };
+
+        // ---------- FÍSICA DEL COCHE ----------
+        let car = {
+            x: 400, y: 500, angle: -Math.PI / 2,
+            speed: 0, maxSpeed: 170, accel: 0.30, handling: 0.9,
+            color: '#e63946', width: 24, height: 42
+        };
+
+        // Pista
+        let trackType = 'circuit';
+        let trackPoints = []; // puntos para la pista de curvas
+        let trackWidth = 120;
+        let finishLine = { x: 0, y: 0, w: 0, h: 0 };
+
+        // Tiempo y vuelta
+        let startTime = 0;
+        let raceTime = 0;
+        let raceFinished = false;
+        let raceStarted = false;
+        let checkpoints = [];
+        let nextCheckpoint = 0;
+
+        // ---------- INICIALIZAR PISTAS ----------
+        function buildCircuitTrack() {
+            // Pista ovalada con curvas (puntos en el sentido de las agujas del reloj)
+            const cx = 480, cy = 320;
+            const rx = 320, ry = 200;
+            trackPoints = [];
+            for (let i = 0; i < 24; i++) {
+                const ang = (i / 24) * Math.PI * 2;
+                const x = cx + Math.cos(ang) * rx;
+                const y = cy + Math.sin(ang) * ry;
+                trackPoints.push({ x, y });
+            }
+            // Línea de meta (en el punto inferior)
+            finishLine = { x: 480, y: 520, w: 80, h: 20 };
+            // Checkpoints (4 puntos alrededor)
+            checkpoints = [
+                { x: 480, y: 120, radius: 50 },  // arriba
+                { x: 800, y: 320, radius: 50 },  // derecha
+                { x: 480, y: 520, radius: 50 },  // abajo (meta)
+                { x: 160, y: 320, radius: 50 }   // izquierda
+            ];
+        }
+
+        function buildStraightTrack() {
+            // Pista recta: dos carriles, meta al final
+            trackPoints = [];
+            // Usamos una línea recta imaginaria, pero dibujamos como pista ancha
+            finishLine = { x: 800, y: 240, w: 60, h: 160 };
+            checkpoints = [
+                { x: 480, y: 320, radius: 60 },
+                { x: 800, y: 320, radius: 50 }
+            ];
+        }
+
+        // ---------- INICIALIZAR CARRERA ----------
+        function startRace(mode, track) {
+            raceMode = mode;
+            currentTrack = track;
+            const selectedCar = cars.find(c => c.id === selectedCarId);
+            car.maxSpeed = selectedCar.speed * 0.6; // ajuste para jugabilidad
+            car.accel = selectedCar.accel;
+            car.handling = selectedCar.handling;
+            car.color = selectedCar.color;
+
+            if (track === 'circuit') {
+                buildCircuitTrack();
+                car.x = 480; car.y = 560;
+                car.angle = -Math.PI / 2;
+            } else {
+                buildStraightTrack();
+                car.x = 100; car.y = 320;
+                car.angle = 0;
+            }
+            car.speed = 0;
+            raceTime = 0;
+            raceFinished = false;
+            raceStarted = false;
+            nextCheckpoint = 0;
+
+            // UI
+            document.querySelectorAll('.ui-panel').forEach(p => p.classList.remove('active'));
+            hud.classList.add('active');
+            finishMsg.style.display = 'none';
+            gameState = 'racing';
+            startTime = performance.now();
+        }
+
+        // ---------- DIBUJO ----------
+        function drawTrack() {
+            ctx.clearRect(0, 0, 960, 640);
+            // Fondo según calidad
+            if (graphicsQuality > 0) {
+                const grad = ctx.createRadialGradient(480, 320, 100, 480, 320, 700);
+                grad.addColorStop(0, '#1a2a3a');
+                grad.addColorStop(1, '#0a0f18');
+                ctx.fillStyle = grad;
+            } else {
+                ctx.fillStyle = '#141c2b';
+            }
+            ctx.fillRect(0, 0, 960, 640);
+
+            if (currentTrack === 'circuit') {
+                // Pista de curvas: dibujar anillo
+                ctx.save();
+                ctx.beginPath();
+                for (let i = 0; i <= trackPoints.length; i++) {
+                    const p = trackPoints[i % trackPoints.length];
+                    if (i === 0) ctx.moveTo(p.x, p.y);
+                    else ctx.lineTo(p.x, p.y);
+                }
+                ctx.closePath();
+                ctx.strokeStyle = '#3e5a7a';
+                ctx.lineWidth = trackWidth;
+                ctx.stroke();
+                ctx.strokeStyle = '#1e2e44';
+                ctx.lineWidth = trackWidth + 6;
+                ctx.stroke();
+                ctx.strokeStyle = '#f0c45a';
+                ctx.lineWidth = 4;
+                ctx.setLineDash([20, 30]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.restore();
+
+                // Línea de meta
+                ctx.fillStyle = '#ffffff';
+                ctx.shadowColor = '#fff';
+                ctx.shadowBlur = 12;
+                ctx.fillRect(finishLine.x - 40, finishLine.y - 6, 80, 12);
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = '#000';
+                for (let i = 0; i < 8; i++) {
+                    ctx.fillRect(finishLine.x - 40 + i * 10, finishLine.y - 6, 5, 12);
+                }
+            } else {
+                // Pista recta (rectángulo alargado)
+                ctx.fillStyle = '#1c2b3f';
+                ctx.shadowBlur = 0;
+                ctx.fillRect(60, 220, 800, 200);
+                ctx.strokeStyle = '#3e5a7a';
+                ctx.lineWidth = 10;
+                ctx.strokeRect(60, 220, 800, 200);
+                // Líneas de carril
+                ctx.strokeStyle = '#f0c45a';
+                ctx.lineWidth = 4;
+                ctx.setLineDash([30, 40]);
+                ctx.beginPath();
+                ctx.moveTo(60, 320);
+                ctx.lineTo(860, 320);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                // Meta
+                ctx.fillStyle = '#fff';
+                ctx.shadowBlur = 12;
+                ctx.shadowColor = '#fff';
+                ctx.fillRect(800, 220, 20, 200);
+                ctx.shadowBlur = 0;
+                for (let i = 0; i < 10; i++) {
+                    ctx.fillStyle = i % 2 === 0 ? '#000' : '#fff';
+                    ctx.fillRect(800, 220 + i * 20, 20, 20);
+                }
+            }
+
+            // Checkpoints (indicadores sutiles)
+            if (graphicsQuality > 1) {
+                ctx.globalAlpha = 0.2;
+                checkpoints.forEach((cp, idx) => {
+                    ctx.beginPath();
+                    ctx.arc(cp.x, cp.y, cp.radius, 0, Math.PI * 2);
+                    ctx.strokeStyle = idx === nextCheckpoint ? '#ffd966' : '#4a6a9a';
+                    ctx.lineWidth = idx === nextCheckpoint ? 6 : 2;
+                    ctx.stroke();
+                });
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        function drawCar() {
+            ctx.save();
+            ctx.translate(car.x, car.y);
+            ctx.rotate(car.angle);
+            // Sombra
+            if (graphicsQuality > 0) {
+                ctx.shadowColor = 'rgba(0,0,0,0.8)';
+                ctx.shadowBlur = 18;
+                ctx.shadowOffsetY = 6;
+            }
+            // Carrocería
+            ctx.fillStyle = car.color;
+            ctx.beginPath();
+            ctx.roundRect(-car.width/2, -car.height/2, car.width, car.height, 8);
+            ctx.fill();
+            // Detalles
+            ctx.fillStyle = '#111';
+            ctx.fillRect(-car.width/2 + 4, -car.height/2 + 4, 6, 8); // faros
+            ctx.fillRect(car.width/2 - 10, -car.height/2 + 4, 6, 8);
+            // Parabrisas
+            ctx.fillStyle = '#a0d0ff';
+            ctx.fillRect(-car.width/2 + 2, -car.height/2 + 12, car.width - 4, 10);
+            ctx.restore();
+        }
+
+        // Extensión para roundRect
+        CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+            if (w < 2 * r) r = w / 2;
+            if (h < 2 * r) r = h / 2;
+            this.moveTo(x + r, y);
+            this.lineTo(x + w - r, y);
+            this.quadraticCurveTo(x + w, y, x + w, y + r);
+            this.lineTo(x + w, y + h - r);
+            this.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+            this.lineTo(x + r, y + h);
+            this.quadraticCurveTo(x, y + h, x, y + h - r);
+            this.lineTo(x, y + r);
+            this.quadraticCurveTo(x, y, x + r, y);
+            return this;
+        };
+
+        // ---------- ACTUALIZAR FÍSICA ----------
+        function updateCar(dt) {
+            if (raceFinished || gameState !== 'racing') return;
+
+            // Controles
+            let accelerating = keys.ArrowUp || keys.w;
+            let braking = keys.ArrowDown || keys.s;
+            let left = keys.ArrowLeft || keys.a;
+            let right = keys.ArrowRight || keys.d;
+
+            if (accelerating) {
+                car.speed += car.accel * dt * 30;
+            } else if (braking) {
+                car.speed -= car.accel * dt * 40;
+            } else {
+                car.speed *= 0.98;
+            }
+
+            car.speed = Math.min(car.maxSpeed, Math.max(-car.maxSpeed * 0.4, car.speed));
+
+            // Girar
+            if (Math.abs(car.speed) > 0.5) {
+                const turnFactor = (car.speed / car.maxSpeed) * 0.6 + 0.2;
+                if (left) car.angle -= 0.04 * turnFactor * (car.speed > 0 ? 1 : -1);
+                if (right) car.angle += 0.04 * turnFactor * (car.speed > 0 ? 1 : -1);
+            }
+
+            // Movimiento
+            car.x += Math.cos(car.angle) * car.speed * dt * 3;
+            car.y += Math.sin(car.angle) * car.speed * dt * 3;
+
+            // Límites de la pista (simplificado)
+            if (currentTrack === 'circuit') {
+                // Mantener dentro del óvalo (aproximado)
+                const cx = 480, cy = 320, rx = 320, ry = 200;
+                const dx = (car.x - cx) / (rx + 40);
+                const dy = (car.y - cy) / (ry + 40);
+                const dist = dx*dx + dy*dy;
+                if (dist > 1.0) {
+                    // Rebotar
+                    const angle = Math.atan2(car.y - cy, car.x - cx);
+                    car.x = cx + Math.cos(angle) * (rx + 40) * 0.98;
+                    car.y = cy + Math.sin(angle) * (ry + 40) * 0.98;
+                    car.speed *= -0.4;
+                }
+            } else {
+                // Pista recta: mantener dentro del rectángulo
+                if (car.y < 210) { car.y = 210; car.speed *= -0.3; }
+                if (car.y > 430) { car.y = 430; car.speed *= -0.3; }
+                if (car.x < 50) { car.x = 50; car.speed *= -0.3; }
+                if (car.x > 870) { car.x = 870; car.speed *= -0.3; }
+            }
+
+            // Detección de meta / checkpoints
+            if (!raceStarted && car.speed > 5) raceStarted = true;
+
+            if (raceStarted && !raceFinished) {
+                // Verificar paso por meta
+                if (currentTrack === 'circuit') {
+                    const distToFinish = Math.hypot(car.x - finishLine.x, car.y - finishLine.y);
+                    if (distToFinish < 45 && nextCheckpoint >= 3) {
+                        finishRace();
+                    }
+                } else {
+                    if (car.x > 790 && car.x < 850 && car.y > 220 && car.y < 420) {
+                        finishRace();
+                    }
+                }
+
+                // Checkpoints para circuit
+                if (currentTrack === 'circuit' && nextCheckpoint < checkpoints.length) {
+                    const cp = checkpoints[nextCheckpoint];
+                    if (Math.hypot(car.x - cp.x, car.y - cp.y) < cp.radius) {
+                        nextCheckpoint++;
+                    }
+                }
+            }
+        }
+
+        function finishRace() {
+            raceFinished = true;
+            const elapsed = (performance.now() - startTime) / 1000;
+            raceTime = elapsed;
+            // Recompensa
+            let reward = Math.floor(1500 / (elapsed / 10 + 1)) + 300;
+            if (raceMode === 'online') reward *= 2;
+            money += reward;
+            updateMoneyUI();
+
+            finishMsg.innerHTML = `🏁 ¡Carrera terminada!<br>⏱️ ${elapsed.toFixed(2)}s<br>💰 +$${reward}`;
+            finishMsg.style.display = 'block';
+
+            // Volver al menú después de 2.5s
+            setTimeout(() => {
+                finishMsg.style.display = 'none';
+                hud.classList.remove('active');
+                gameState = 'menu';
+                document.getElementById('main-menu').classList.add('active');
+                raceFinished = false;
+            }, 2500);
+        }
+
+        // ---------- BUCLE PRINCIPAL ----------
+        let lastTime = 0;
+        function gameLoop(now) {
+            const dt = Math.min(0.05, (now - lastTime) / 1000);
+            lastTime = now;
+
+            if (gameState === 'racing') {
+                updateCar(dt);
+                drawTrack();
+                drawCar();
+
+                // Actualizar HUD
+                document.getElementById('hud-money').textContent = money;
+                document.getElementById('hud-time').textContent = raceStarted ? ((performance.now() - startTime) / 1000).toFixed(2) : '0.00';
+                document.getElementById('hud-speed').textContent = Math.abs(Math.floor(car.speed * 3.6));
+            } else {
+                // Modo menú: dibujar fondo simple
+                ctx.fillStyle = '#0a0f1e';
+                ctx.fillRect(0, 0, 960, 640);
+                if (graphicsQuality > 0) {
+                    ctx.fillStyle = '#111a2b';
+                    for (let i = 0; i < 20; i++) {
+                        ctx.beginPath();
+                        ctx.arc(100 + i * 45, 100 + Math.sin(i) * 50, 30, 0, Math.PI*2);
+                        ctx.fillStyle = `rgba(40,70,120,${0.1 + i*0.01})`;
+                        ctx.fill();
+                    }
+                }
+            }
+            requestAnimationFrame(gameLoop);
+        }
+
+        // ---------- UI HELPERS ----------
+        function updateMoneyUI() {
+            document.getElementById('menu-money').textContent = money;
+            document.getElementById('garage-money').textContent = money;
+            renderCarGrid();
+        }
+
+        function renderCarGrid() {
+            const grid = document.getElementById('car-grid');
+            grid.innerHTML = '';
+            cars.forEach(c => {
+                const card = document.createElement('div');
+                card.className = `car-card ${c.id === selectedCarId ? 'selected' : ''}`;
+                card.innerHTML = `
+                    <h4>${c.name}</h4>
+                    <div class="price">${c.price === 0 ? 'GRATIS' : '$' + c.price.toLocaleString()}</div>
+                    <div class="owned">${c.owned ? '✅ Comprado' : '🔒 Bloqueado'}</div>
+                `;
+                card.onclick = () => {
+                    selectedCarId = c.id;
+                    renderCarGrid();
+                };
+                grid.appendChild(card);
+            });
+        }
+
+        // ---------- EVENTOS ----------
+        // Teclado
+        window.addEventListener('keydown', (e) => {
+            const k = e.key;
+            if (k === 'ArrowUp' || k === 'w' || k === 'W') { keys.ArrowUp = true; keys.w = true; e.preventDefault(); }
+            if (k === 'ArrowDown' || k === 's' || k === 'S') { keys.ArrowDown = true; keys.s = true; e.preventDefault(); }
+            if (k === 'ArrowLeft' || k === 'a' || k === 'A') { keys.ArrowLeft = true; keys.a = true; e.preventDefault(); }
+            if (k === 'ArrowRight' || k === 'd' || k === 'D') { keys.ArrowRight = true; keys.d = true; e.preventDefault(); }
+            if (k === 'r' || k === 'R') {
+                if (gameState === 'racing') {
+                    // Reiniciar carrera
+                    startRace(raceMode, currentTrack);
+                }
+            }
+            if (k === 'Escape') {
+                if (gameState === 'racing') {
+                    gameState = 'menu';
+                    hud.classList.remove('active');
+                    document.getElementById('main-menu').classList.add('active');
+                }
+            }
+        });
+        window.addEventListener('keyup', (e) => {
+            const k = e.key;
+            if (k === 'ArrowUp' || k === 'w' || k === 'W') { keys.ArrowUp = false; keys.w = false; e.preventDefault(); }
+            if (k === 'ArrowDown' || k === 's' || k === 'S') { keys.ArrowDown = false; keys.s = false; e.preventDefault(); }
+            if (k === 'ArrowLeft' || k === 'a' || k === 'A') { keys.ArrowLeft = false; keys.a = false; e.preventDefault(); }
+            if (k === 'ArrowRight' || k === 'd' || k === 'D') { keys.ArrowRight = false; keys.d = false; e.preventDefault(); }
+        });
+
+        // Botones menú
